@@ -1,0 +1,39 @@
+# ---- Secrets and local env ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# ---- Python environment and caches ----
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# ---- Local databases and logs ----
+*.sqlite
+*.sqlite3
+tests/test.db
+*.log
+
+# ---- Build / packaging artifacts ----
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ---- IDE / OS files ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
