@@ -1,3 +1,5 @@
+import os
+
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
@@ -8,6 +10,7 @@ from app.bot.client import ApiClient
 
 router = Router()
 api_client = ApiClient()
+public_base_url = os.getenv("PUBLIC_BASE_URL", api_client.base_url).rstrip("/")
 
 
 def _extract_single_arg(message: Message) -> str | None:
@@ -49,7 +52,7 @@ async def cmd_shorten(message: Message):
 
     short_code = data["short_code"]
     link_id = data["id"]
-    short_link = f"{api_client.base_url}/r/{short_code}"
+    short_link = f"{public_base_url}/r/{short_code}"
     await message.answer(f"Готово!\nid={link_id}\nshort={short_link}")
 
 

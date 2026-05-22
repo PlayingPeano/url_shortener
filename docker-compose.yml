@@ -40,6 +40,7 @@ services:
     environment:
       BOT_TOKEN: ${BOT_TOKEN}
       API_BASE_URL: http://api:8000
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
     dns:
       - 1.1.1.1
       - 8.8.8.8
