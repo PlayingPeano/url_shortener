@@ -75,6 +75,48 @@ def test_metrics_endpoint(client):
     assert "http_requests_total" in response.text
 
 
+def test_api_key_required_for_create(secured_client):
+    response = secured_client.post("/links", json={"original_url": "https://example.com"})
+    assert response.status_code == 401
+
+
+def test_api_key_required_for_delete(secured_client):
+    create = secured_client.post(
+        "/links",
+        json={"original_url": "https://example.com"},
+        headers={"X-API-Key": "test-secret-key"},
+    )
+    assert create.status_code == 200
+    link_id = create.json()["id"]
+
+    response = secured_client.delete(f"/links/{link_id}")
+    assert response.status_code == 401
+
+
+def test_api_key_accepts_correct_key(secured_client):
+    response = secured_client.post(
+        "/links",
+        json={"original_url": "https://example.com"},
+        headers={"X-API-Key": "test-secret-key"},
+    )
+    assert response.status_code == 200
+
+
+def test_get_endpoints_remain_open_when_key_set(secured_client):
+    create = secured_client.post(
+        "/links",
+        json={"original_url": "https://example.com"},
+        headers={"X-API-Key": "test-secret-key"},
+    )
+    link_id = create.json()["id"]
+
+    response = secured_client.get(f"/links/{link_id}")
+    assert response.status_code == 200
+
+    response = secured_client.get("/links")
+    assert response.status_code == 200
+
+
 def test_redirect_by_code(client):
     created = create_sample_link(client, "https://python.org")
     code = created["short_code"]

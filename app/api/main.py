@@ -1,11 +1,13 @@
+import os
 from pathlib import Path
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Security
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.security.api_key import APIKeyHeader
 from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy.orm import Session
-import secrets
+import secrets as secrets_mod
 
 from app.db.database import Base, engine, SessionLocal
 from app.db.models import Link
@@ -14,6 +16,16 @@ from app.api.schemas import LinkCreate, LinkUpdate, LinkOut
 app = FastAPI()
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+API_KEY = os.getenv("API_KEY", "").strip()
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def require_api_key(provided: str | None = Security(api_key_header)) -> None:
+    if not API_KEY:
+        return
+    if not provided or not secrets_mod.compare_digest(provided, API_KEY):
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 Instrumentator(
     excluded_handlers=["/metrics", "/health"],
@@ -44,10 +56,10 @@ def list_links(limit: int = 50, db: Session = Depends(get_db)):
     return db.query(Link).order_by(Link.id.desc()).limit(limit).all()
 
 
-@app.post("/links", response_model=LinkOut)
+@app.post("/links", response_model=LinkOut, dependencies=[Depends(require_api_key)])
 def create_link(payload: LinkCreate, db: Session = Depends(get_db)):
     for _ in range(5):
-        code = secrets.token_urlsafe(6)[:8]
+        code = secrets_mod.token_urlsafe(6)[:8]
         exists = db.query(Link).filter(Link.short_code == code).first()
         if not exists:
             break
@@ -67,7 +79,7 @@ def get_link(link_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Link not found")
     return link
 
-@app.put("/links/{link_id}", response_model=LinkOut)
+@app.put("/links/{link_id}", response_model=LinkOut, dependencies=[Depends(require_api_key)])
 def update_link(link_id: int, payload: LinkUpdate, db: Session = Depends(get_db)):
     link = db.query(Link).filter(Link.id == link_id).first()
     if not link:
@@ -79,7 +91,7 @@ def update_link(link_id: int, payload: LinkUpdate, db: Session = Depends(get_db)
     return link
 
 
-@app.delete("/links/{link_id}", status_code=204)
+@app.delete("/links/{link_id}", status_code=204, dependencies=[Depends(require_api_key)])
 def delete_link(link_id: int, db: Session = Depends(get_db)):
     link = db.query(Link).filter(Link.id == link_id).first()
     if not link:

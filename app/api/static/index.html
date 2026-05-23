@@ -95,6 +95,18 @@
         <p class="muted">Создавайте короткие ссылки, ищите и удаляйте их.</p>
 
         <section>
+            <h2>API key</h2>
+            <p class="muted">Нужен для создания, изменения и удаления ссылок. Сохраняется в браузере (localStorage).</p>
+            <label for="api-key">X-API-Key</label>
+            <input type="text" id="api-key" placeholder="введите ключ" />
+            <div class="actions">
+                <button id="btn-save-key" class="secondary">Сохранить</button>
+                <button id="btn-clear-key" class="danger">Очистить</button>
+            </div>
+            <div id="key-result" class="result"></div>
+        </section>
+
+        <section>
             <h2>Создать короткую ссылку</h2>
             <label for="create-url">Длинный URL</label>
             <input type="url" id="create-url" placeholder="https://example.com/very/long/url" />
@@ -142,8 +154,20 @@
             el.classList.add(ok ? "ok" : "err");
         }
 
+        const API_KEY_STORAGE = "shortener_api_key";
+        function getApiKey() {
+            return localStorage.getItem(API_KEY_STORAGE) || "";
+        }
+        function setApiKey(value) {
+            if (value) localStorage.setItem(API_KEY_STORAGE, value);
+            else localStorage.removeItem(API_KEY_STORAGE);
+        }
+
         async function callApi(method, path, body) {
-            const opts = { method, headers: { "Content-Type": "application/json" } };
+            const headers = { "Content-Type": "application/json" };
+            const key = getApiKey();
+            if (key) headers["X-API-Key"] = key;
+            const opts = { method, headers };
             if (body !== undefined) opts.body = JSON.stringify(body);
             const response = await fetch(baseUrl + path, opts);
             const text = await response.text();
@@ -151,6 +175,20 @@
             try { data = text ? JSON.parse(text) : null; } catch { data = text; }
             return { ok: response.ok, status: response.status, data };
         }
+
+        document.getElementById("api-key").value = getApiKey();
+
+        document.getElementById("btn-save-key").addEventListener("click", () => {
+            const value = document.getElementById("api-key").value.trim();
+            setApiKey(value);
+            setResult(document.getElementById("key-result"), value ? "Ключ сохранён." : "Ключ очищен.");
+        });
+
+        document.getElementById("btn-clear-key").addEventListener("click", () => {
+            setApiKey("");
+            document.getElementById("api-key").value = "";
+            setResult(document.getElementById("key-result"), "Ключ очищен.");
+        });
 
         function shortUrl(code) {
             return `${baseUrl}/r/${code}`;
