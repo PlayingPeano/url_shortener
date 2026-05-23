@@ -1,0 +1,13 @@
+cloud_id  = "b1gso4lue76r2i46t9m"
+folder_id = "b1gequhod3s24tnd80ta"
+zone      = "ru-central1-d"
+
+cluster_name = "url-shortener-k8s"
+k8s_version  = "1.30"
+
+node_cores     = 2
+node_memory_gb = 4
+node_disk_gb   = 30
+node_count     = 1
+
+registry_name = "url-shortener-registry"
