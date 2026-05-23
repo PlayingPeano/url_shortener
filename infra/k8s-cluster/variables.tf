@@ -23,7 +23,7 @@ variable "cluster_name" {
 variable "k8s_version" {
   description = "Kubernetes version (must be supported by the STABLE release channel)."
   type        = string
-  default     = "1.30"
+  default     = "1.31"
 }
 
 variable "node_cores" {
