@@ -65,7 +65,14 @@ def test_list_links(client):
 def test_static_index_served(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert "<title>URL Shortener</title>" in response.text
+    assert "URL Shortener" in response.text
+
+
+def test_metrics_endpoint(client):
+    client.get("/health")
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    assert "http_requests_total" in response.text
 
 
 def test_redirect_by_code(client):

@@ -63,6 +63,19 @@ PYTHONPATH=. pytest -q
 | DELETE | `/links/{id}`      | Удалить ссылку                    |
 | GET    | `/r/{code}`        | Редирект по короткому коду        |
 
+## Мониторинг
+
+В `docker-compose.yml` подняты Prometheus и Grafana с предварительно настроенным
+дашбордом (RPS, latency p50/p95/p99, error rate 5xx, разбивка по handler/status).
+
+- Метрики API: `http://localhost:8000/metrics`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000` (логин/пароль из `GRAFANA_ADMIN_USER`/`GRAFANA_ADMIN_PASSWORD`)
+- Дашборд: «URL Shortener — API»
+
+На VM Grafana и Prometheus биндятся на `127.0.0.1`, наружу их пускает только Nginx
+(по подпути `/grafana/`).
+
 ## Деплой
 
 Деплой выполняется на VM в Yandex Cloud. Подробности — в `docker-compose.yml`

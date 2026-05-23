@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy.orm import Session
 import secrets
 
@@ -13,6 +14,10 @@ from app.api.schemas import LinkCreate, LinkUpdate, LinkOut
 app = FastAPI()
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+
+Instrumentator(
+    excluded_handlers=["/metrics", "/health"],
+).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 
 @app.on_event("startup")
