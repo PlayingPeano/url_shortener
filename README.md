@@ -121,6 +121,46 @@ PYTHONPATH=. pytest -q
 - Секреты только в `.env` (в `.gitignore`); в GitHub Actions — через Secrets.
 - Rate-limit на уровне Nginx (см. `limit_req_zone` в конфиге на VM).
 
+## Infrastructure as Code (Terraform)
+
+Каталог `infra/terraform/` содержит Terraform-модуль, описывающий всю инфраструктуру:
+VPC-сеть, подсеть, security group (открыто только 22/80/443) и саму VM с
+cloud-init, который ставит Docker, Nginx, certbot и UFW.
+
+### Что нужно один раз
+
+1. Установить Terraform >= 1.5: <https://developer.hashicorp.com/terraform/downloads>
+2. Получить OAuth-токен Yandex Cloud:
+   <https://oauth.yandex.ru/authorize?response_type=token&client_id=1a6990aa636648e9b2ef855fa7bec2fb>
+3. Экспортировать токен в окружение:
+
+   ```bash
+   export YC_TOKEN=<полученный_токен>
+   ```
+
+4. Скопировать `terraform.tfvars.example` → `terraform.tfvars` и вписать свой
+   `ssh_public_key` (содержимое `~/.ssh/your_key.pub` одной строкой).
+
+### Команды
+
+```bash
+cd infra/terraform
+terraform init
+terraform fmt -check -recursive
+terraform validate
+terraform plan
+# При желании поднять реальную VM (создаст новые ресурсы):
+# terraform apply
+```
+
+`terraform plan` показывает, что будет создано, ничего не меняя. CI на каждый
+push выполняет `terraform fmt -check`, `init -backend=false` и `validate`,
+поэтому код всегда «валидируется».
+
+После `terraform apply` нужно вручную: указать новый IP в DNS (DuckDNS),
+склонировать репозиторий на VM, заполнить `.env`, выпустить сертификат
+`certbot --nginx -d <домен>`, прописать `location` в Nginx — и `docker compose up -d`.
+
 ## Деплой
 
 Деплой выполняется на VM в Yandex Cloud. На каждый push в `master` GitHub Actions

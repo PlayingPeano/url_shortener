@@ -1,0 +1,10 @@
+cloud_id  = "b1gso4lue76r2i46t9m"
+folder_id = "b1gequhod3s24tnd80ta"
+zone      = "ru-central1-d"
+
+vm_name = "url-shortener"
+vm_user = "ulya"
+
+# Содержимое ~/.ssh/<твой ключ>.pub одной строкой.
+# Например: "ssh-ed25519 AAAAC3N... ulya@laptop"
+ssh_public_key = "ssh-ed25519 PUT_YOUR_PUBLIC_KEY_HERE comment"
