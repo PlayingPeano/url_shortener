@@ -2,6 +2,7 @@ import os
 
 from aiogram import Router
 from aiogram.filters import Command
+from aiogram.methods import SendMessage
 from aiogram.types import Message
 import httpx
 
@@ -22,85 +23,92 @@ def _extract_single_arg(message: Message) -> str | None:
     return parts[1].strip()
 
 
+def _reply(message: Message, text: str) -> SendMessage:
+    return SendMessage(chat_id=message.chat.id, text=text)
+
+
 @router.message(Command("start"))
-async def cmd_start(message: Message):
-    await message.answer(
+async def cmd_start(message: Message) -> SendMessage:
+    return _reply(
+        message,
         "Привет! Я бот-сокращатель.\n"
         "Команды:\n"
         "/shorten <url> - создать короткую ссылку\n"
         "/get <id> - получить ссылку по id\n"
-        "/delete <id> - удалить ссылку"
+        "/delete <id> - удалить ссылку",
     )
 
 
 @router.message(Command("shorten"))
-async def cmd_shorten(message: Message):
+async def cmd_shorten(message: Message) -> SendMessage:
     url = _extract_single_arg(message)
     if not url:
-        await message.answer("Использование: /shorten https://example.com")
-        return
+        return _reply(message, "Использование: /shorten https://example.com")
 
     try:
         data = await api_client.create_link(url)
     except httpx.HTTPStatusError as exc:
         detail = exc.response.text
-        await message.answer(f"API вернул ошибку: {exc.response.status_code}\n{detail}")
-        return
+        return _reply(
+            message,
+            f"API вернул ошибку: {exc.response.status_code}\n{detail}",
+        )
     except httpx.HTTPError:
-        await message.answer("Не могу достучаться до API. Проверь, что FastAPI запущен.")
-        return
+        return _reply(
+            message,
+            "Не могу достучаться до API. Проверь, что FastAPI запущен.",
+        )
 
     short_code = data["short_code"]
     link_id = data["id"]
     short_link = f"{public_base_url}/r/{short_code}"
-    await message.answer(f"Готово!\nid={link_id}\nshort={short_link}")
+    return _reply(message, f"Готово!\nid={link_id}\nshort={short_link}")
 
 
 @router.message(Command("get"))
-async def cmd_get(message: Message):
+async def cmd_get(message: Message) -> SendMessage:
     arg = _extract_single_arg(message)
     if not arg or not arg.isdigit():
-        await message.answer("Использование: /get <числовой id>")
-        return
+        return _reply(message, "Использование: /get <числовой id>")
 
     link_id = int(arg)
     try:
         data = await api_client.get_link(link_id)
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 404:
-            await message.answer("Ссылка с таким id не найдена.")
-            return
-        await message.answer(f"API вернул ошибку: {exc.response.status_code}")
-        return
+            return _reply(message, "Ссылка с таким id не найдена.")
+        return _reply(message, f"API вернул ошибку: {exc.response.status_code}")
     except httpx.HTTPError:
-        await message.answer("Не могу достучаться до API. Проверь, что FastAPI запущен.")
-        return
+        return _reply(
+            message,
+            "Не могу достучаться до API. Проверь, что FastAPI запущен.",
+        )
 
-    await message.answer(
+    return _reply(
+        message,
         f"id={data['id']}\n"
         f"original_url={data['original_url']}\n"
-        f"short_code={data['short_code']}"
+        f"short_code={data['short_code']}",
     )
 
 
 @router.message(Command("delete"))
-async def cmd_delete(message: Message):
+async def cmd_delete(message: Message) -> SendMessage:
     arg = _extract_single_arg(message)
     if not arg or not arg.isdigit():
-        await message.answer("Использование: /delete <числовой id>")
-        return
+        return _reply(message, "Использование: /delete <числовой id>")
 
     link_id = int(arg)
     try:
         await api_client.delete_link(link_id)
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 404:
-            await message.answer("Ссылка с таким id не найдена.")
-            return
-        await message.answer(f"API вернул ошибку: {exc.response.status_code}")
-        return
+            return _reply(message, "Ссылка с таким id не найдена.")
+        return _reply(message, f"API вернул ошибку: {exc.response.status_code}")
     except httpx.HTTPError:
-        await message.answer("Не могу достучаться до API. Проверь, что FastAPI запущен.")
-        return
+        return _reply(
+            message,
+            "Не могу достучаться до API. Проверь, что FastAPI запущен.",
+        )
 
-    await message.answer("Ссылка удалена.")
+    return _reply(message, "Ссылка удалена.")

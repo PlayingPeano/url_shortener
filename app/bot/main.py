@@ -36,7 +36,11 @@ async def _run_webhook(bot: Bot, dp: Dispatcher):
     webhook_url = f"{WEBHOOK_BASE_URL}{webhook_path}"
 
     app = web.Application()
-    SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=webhook_path)
+    SimpleRequestHandler(
+        dispatcher=dp,
+        bot=bot,
+        handle_in_background=False,
+    ).register(app, path=webhook_path)
     setup_application(app, dp, bot=bot)
 
     runner = web.AppRunner(app)
