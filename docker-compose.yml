@@ -39,11 +39,18 @@ services:
         condition: service_started
     environment:
       BOT_TOKEN: ${BOT_TOKEN}
+      BOT_MODE: ${BOT_MODE:-polling}
       API_BASE_URL: http://api:8000
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+      WEBHOOK_BASE_URL: ${WEBHOOK_BASE_URL:-}
+      WEBHOOK_PATH: ${WEBHOOK_PATH:-/webhook}
+      WEBHOOK_HOST: ${WEBHOOK_HOST:-0.0.0.0}
+      WEBHOOK_PORT: ${WEBHOOK_PORT:-8443}
     dns:
       - 1.1.1.1
       - 8.8.8.8
+    ports:
+      - "${WEBHOOK_PORT:-8443}:${WEBHOOK_PORT:-8443}"
     command: python -m app.bot.main
 
 volumes:
