@@ -47,6 +47,27 @@ def test_delete_link(client):
     assert response.status_code == 404
 
 
+def test_list_links(client):
+    response = client.get("/links")
+    assert response.status_code == 200
+    assert response.json() == []
+
+    create_sample_link(client, "https://a.example.com")
+    create_sample_link(client, "https://b.example.com")
+
+    response = client.get("/links")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    assert data[0]["id"] > data[1]["id"]
+
+
+def test_static_index_served(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "<title>URL Shortener</title>" in response.text
+
+
 def test_redirect_by_code(client):
     created = create_sample_link(client, "https://python.org")
     code = created["short_code"]

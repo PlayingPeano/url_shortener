@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>URL Shortener</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --panel-2: #334155;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --accent: #38bdf8;
+            --danger: #f87171;
+            --ok: #4ade80;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 32px 16px 64px;
+        }
+        h1 { font-size: 28px; margin-bottom: 4px; }
+        .muted { color: var(--muted); font-size: 14px; }
+        section {
+            background: var(--panel);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 24px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
+        section h2 { margin-top: 0; font-size: 18px; }
+        label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+        input[type="text"], input[type="url"], input[type="number"] {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--panel-2);
+            background: #0b1220;
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+        }
+        input:focus { border-color: var(--accent); }
+        .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+        .row > * { flex: 1; min-width: 0; }
+        .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        button {
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 0;
+            background: var(--accent);
+            color: #0b1220;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button.secondary { background: var(--panel-2); color: var(--text); }
+        button.danger { background: var(--danger); color: #1f1f1f; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .result {
+            margin-top: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #0b1220;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            min-height: 24px;
+        }
+        .result.ok { border-left: 3px solid var(--ok); }
+        .result.err { border-left: 3px solid var(--danger); }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+        th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--panel-2); }
+        th { color: var(--muted); font-weight: 500; }
+        .id-cell { width: 60px; }
+        .code-cell { width: 110px; }
+        .actions-cell { width: 90px; text-align: right; }
+        .empty { color: var(--muted); padding: 16px 0; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>URL Shortener</h1>
+        <p class="muted">Создавайте короткие ссылки, ищите и удаляйте их.</p>
+
+        <section>
+            <h2>Создать короткую ссылку</h2>
+            <label for="create-url">Длинный URL</label>
+            <input type="url" id="create-url" placeholder="https://example.com/very/long/url" />
+            <div class="actions">
+                <button id="btn-create">Сократить</button>
+            </div>
+            <div id="create-result" class="result"></div>
+        </section>
+
+        <section>
+            <h2>Найти / обновить / удалить по ID</h2>
+            <div class="row">
+                <div>
+                    <label for="id-input">ID ссылки</label>
+                    <input type="number" id="id-input" min="1" placeholder="например, 1" />
+                </div>
+                <div>
+                    <label for="update-url">Новый URL (для Update)</label>
+                    <input type="url" id="update-url" placeholder="https://example.com/new" />
+                </div>
+            </div>
+            <div class="actions">
+                <button id="btn-get" class="secondary">Найти</button>
+                <button id="btn-update" class="secondary">Обновить</button>
+                <button id="btn-delete" class="danger">Удалить</button>
+            </div>
+            <div id="id-result" class="result"></div>
+        </section>
+
+        <section>
+            <h2>Все ссылки</h2>
+            <div class="actions">
+                <button id="btn-refresh" class="secondary">Обновить список</button>
+            </div>
+            <div id="list-container"></div>
+        </section>
+    </div>
+
+    <script>
+        const baseUrl = window.location.origin;
+
+        function setResult(el, text, ok = true) {
+            el.textContent = text;
+            el.classList.remove("ok", "err");
+            el.classList.add(ok ? "ok" : "err");
+        }
+
+        async function callApi(method, path, body) {
+            const opts = { method, headers: { "Content-Type": "application/json" } };
+            if (body !== undefined) opts.body = JSON.stringify(body);
+            const response = await fetch(baseUrl + path, opts);
+            const text = await response.text();
+            let data;
+            try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+            return { ok: response.ok, status: response.status, data };
+        }
+
+        function shortUrl(code) {
+            return `${baseUrl}/r/${code}`;
+        }
+
+        document.getElementById("btn-create").addEventListener("click", async () => {
+            const url = document.getElementById("create-url").value.trim();
+            const resEl = document.getElementById("create-result");
+            if (!url) {
+                setResult(resEl, "Введите URL", false);
+                return;
+            }
+            const res = await callApi("POST", "/links", { original_url: url });
+            if (res.ok) {
+                const link = shortUrl(res.data.short_code);
+                setResult(resEl, `id = ${res.data.id}\nshort = ${link}`);
+                refreshList();
+            } else {
+                setResult(resEl, `Ошибка ${res.status}: ${JSON.stringify(res.data)}`, false);
+            }
+        });
+
+        document.getElementById("btn-get").addEventListener("click", async () => {
+            const id = document.getElementById("id-input").value;
+            const resEl = document.getElementById("id-result");
+            if (!id) return setResult(resEl, "Введите ID", false);
+            const res = await callApi("GET", `/links/${id}`);
+            if (res.ok) {
+                const link = shortUrl(res.data.short_code);
+                setResult(resEl, `id = ${res.data.id}\noriginal = ${res.data.original_url}\nshort = ${link}`);
+            } else {
+                setResult(resEl, `Ошибка ${res.status}: ${JSON.stringify(res.data)}`, false);
+            }
+        });
+
+        document.getElementById("btn-update").addEventListener("click", async () => {
+            const id = document.getElementById("id-input").value;
+            const newUrl = document.getElementById("update-url").value.trim();
+            const resEl = document.getElementById("id-result");
+            if (!id) return setResult(resEl, "Введите ID", false);
+            if (!newUrl) return setResult(resEl, "Введите новый URL", false);
+            const res = await callApi("PUT", `/links/${id}`, { original_url: newUrl });
+            if (res.ok) {
+                setResult(resEl, `Обновлено.\nid = ${res.data.id}\noriginal = ${res.data.original_url}`);
+                refreshList();
+            } else {
+                setResult(resEl, `Ошибка ${res.status}: ${JSON.stringify(res.data)}`, false);
+            }
+        });
+
+        document.getElementById("btn-delete").addEventListener("click", async () => {
+            const id = document.getElementById("id-input").value;
+            const resEl = document.getElementById("id-result");
+            if (!id) return setResult(resEl, "Введите ID", false);
+            const res = await callApi("DELETE", `/links/${id}`);
+            if (res.ok) {
+                setResult(resEl, `Ссылка ${id} удалена.`);
+                refreshList();
+            } else {
+                setResult(resEl, `Ошибка ${res.status}: ${JSON.stringify(res.data)}`, false);
+            }
+        });
+
+        async function refreshList() {
+            const container = document.getElementById("list-container");
+            container.innerHTML = "<div class='empty'>Загрузка...</div>";
+            const res = await callApi("GET", "/links");
+            if (!res.ok) {
+                container.innerHTML = `<div class='empty'>Ошибка ${res.status}: ${JSON.stringify(res.data)}</div>`;
+                return;
+            }
+            if (!res.data || res.data.length === 0) {
+                container.innerHTML = "<div class='empty'>Пока пусто.</div>";
+                return;
+            }
+            const rows = res.data.map(link => `
+                <tr>
+                    <td class="id-cell">${link.id}</td>
+                    <td class="code-cell"><a href="${shortUrl(link.short_code)}" target="_blank">${link.short_code}</a></td>
+                    <td>${link.original_url}</td>
+                    <td class="actions-cell">
+                        <button class="danger row-delete" data-id="${link.id}">x</button>
+                    </td>
+                </tr>
+            `).join("");
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr><th class="id-cell">ID</th><th class="code-cell">Код</th><th>Оригинальный URL</th><th class="actions-cell"></th></tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+            container.querySelectorAll(".row-delete").forEach(btn => {
+                btn.addEventListener("click", async (e) => {
+                    const id = e.currentTarget.getAttribute("data-id");
+                    const res = await callApi("DELETE", `/links/${id}`);
+                    if (res.ok) refreshList();
+                });
+            });
+        }
+
+        document.getElementById("btn-refresh").addEventListener("click", refreshList);
+        refreshList();
+    </script>
+</body>
+</html>
