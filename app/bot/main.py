@@ -14,6 +14,7 @@ WEBHOOK_BASE_URL = os.getenv("WEBHOOK_BASE_URL", "").rstrip("/")
 WEBHOOK_PATH = os.getenv("WEBHOOK_PATH", "/webhook")
 WEBHOOK_HOST = os.getenv("WEBHOOK_HOST", "0.0.0.0")
 WEBHOOK_PORT = int(os.getenv("WEBHOOK_PORT", "8443"))
+AUTO_SET_WEBHOOK = os.getenv("AUTO_SET_WEBHOOK", "true").strip().lower() == "true"
 
 
 def _normalized_webhook_path(path: str) -> str:
@@ -43,12 +44,17 @@ async def _run_webhook(bot: Bot, dp: Dispatcher):
     site = web.TCPSite(runner, host=WEBHOOK_HOST, port=WEBHOOK_PORT)
     await site.start()
 
-    await bot.set_webhook(url=webhook_url, drop_pending_updates=False)
+    if AUTO_SET_WEBHOOK:
+        await bot.set_webhook(url=webhook_url, drop_pending_updates=False)
 
     try:
         await asyncio.Event().wait()
     finally:
-        await bot.delete_webhook(drop_pending_updates=False)
+        if AUTO_SET_WEBHOOK:
+            try:
+                await bot.delete_webhook(drop_pending_updates=False)
+            except Exception:
+                pass
         await runner.cleanup()
 
 

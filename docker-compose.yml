@@ -46,11 +46,12 @@ services:
       WEBHOOK_PATH: ${WEBHOOK_PATH:-/webhook}
       WEBHOOK_HOST: ${WEBHOOK_HOST:-0.0.0.0}
       WEBHOOK_PORT: ${WEBHOOK_PORT:-8443}
+      AUTO_SET_WEBHOOK: ${AUTO_SET_WEBHOOK:-true}
     dns:
       - 1.1.1.1
       - 8.8.8.8
     ports:
-      - "${WEBHOOK_PORT:-8443}:${WEBHOOK_PORT:-8443}"
+      - "127.0.0.1:${WEBHOOK_PORT:-8443}:${WEBHOOK_PORT:-8443}"
     command: python -m app.bot.main
 
 volumes:
