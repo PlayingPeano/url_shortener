@@ -1,0 +1,26 @@
+# Перед применением подставь свой домен вместо CHANGE_ME_DOMAIN.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api
+  namespace: url-shortener
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - CHANGE_ME_DOMAIN
+      secretName: api-tls
+  rules:
+    - host: CHANGE_ME_DOMAIN
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8000

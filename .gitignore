@@ -51,3 +51,7 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
+# ---- Kubernetes ----
+k8s/secret.local.yaml
+k8s/*.local.yaml

@@ -161,6 +161,31 @@ push выполняет `terraform fmt -check`, `init -backend=false` и `valida
 склонировать репозиторий на VM, заполнить `.env`, выпустить сертификат
 `certbot --nginx -d <домен>`, прописать `location` в Nginx — и `docker compose up -d`.
 
+## Kubernetes (Yandex Managed K8s)
+
+Параллельно с docker-compose-деплоем приложение поднимается в Managed K8s-кластере
+Yandex Cloud (создаётся через `infra/k8s-cluster/`). Образ хранится в Yandex
+Container Registry; ноды K8s достают его без отдельного `imagePullSecret`,
+потому что у service account нод дана роль `container-registry.images.puller`.
+
+Манифесты лежат в `k8s/`:
+
+- `namespace.yaml` — namespace `url-shortener`
+- `configmap.yaml` — несекретные параметры (имена БД/пользователя)
+- `secret.example.yaml` — шаблон Secret (реальные значения в `secret.local.yaml`, он в `.gitignore`)
+- `postgres.yaml` — Postgres 16 как StatefulSet + headless Service + PVC на 5 GiB (Yandex Network SSD)
+- `api.yaml` — Deployment FastAPI (2 реплики, RollingUpdate, readiness/liveness `/health`) + ClusterIP Service
+- `kustomization.yaml` — `kubectl apply -k .` за один заход
+- `ingress.yaml` — Ingress (`ingress-nginx`) с TLS через cert-manager
+- `cluster-issuer.yaml` — Let's Encrypt ClusterIssuer (HTTP-01 challenge)
+
+Публичная точка входа в K8s-стек — отдельный поддомен `myshortbot-k8s.duckdns.org`,
+указывающий на IP Yandex Network Load Balancer'a, который автоматически создаётся
+сервисом `ingress-nginx-controller` (типа `LoadBalancer`). Старый docker-compose
+стек продолжает работать на `myshortbot.duckdns.org` параллельно.
+
+Пошаговая инструкция по сборке и деплою — в `k8s/README.md`.
+
 ## Деплой
 
 Деплой выполняется на VM в Yandex Cloud. На каждый push в `master` GitHub Actions

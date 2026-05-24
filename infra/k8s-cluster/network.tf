@@ -51,6 +51,19 @@ resource "yandex_vpc_security_group" "k8s_main" {
     from_port      = 0
     to_port        = 65535
   }
+  ingress {
+    description    = "K8s API server (kubectl from anywhere)"
+    protocol       = "TCP"
+    port           = 443
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description    = "K8s API server (kubectl from anywhere)"
+    protocol       = "TCP"
+    port           = 443
+    v4_cidr_blocks = ["0.0.0.0/0"]
+  }
 
   ingress {
     description    = "NodePort range from anywhere (will be tightened later by Ingress)"
