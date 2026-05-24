@@ -213,6 +213,61 @@ curl -s -X POST https://myshortbot-k8s.duckdns.org/links \
 HTML-страница, замок в адресной строке должен показывать валидный сертификат
 от Let's Encrypt.
 
+## CI/CD: автодеплой в K8s
+
+После первого ручного применения манифестов дальше образ собирается и
+выкатывается автоматически на каждый push в `master`.
+
+Сборка живёт в `.github/workflows/ci.yml`, jobs `push-image` и `deploy-k8s`:
+
+1. `push-image`: после `tests` собирает Docker-образ через Buildx,
+   логинится в `cr.yandex` под service account'ом `ci-pusher` (роль
+   `container-registry.images.pusher`) и пушит два тэга — `<sha7>` и `latest`.
+2. `deploy-k8s`: после `push-image` берёт kubeconfig через
+   `yc managed-kubernetes cluster get-credentials --external --force`,
+   выполняет `kubectl set image deployment/api api=<новый_образ>` и
+   `kubectl rollout status` (таймаут 180 c). У того же SA есть роль
+   `k8s.cluster-api.editor` — этого хватает для rollout.
+
+### Что нужно один раз настроить
+
+После `terraform apply` в `infra/k8s-cluster/` (где уже описан `ci_pusher` SA):
+
+```bash
+cd infra/k8s-cluster
+terraform output ci_pusher_create_key_command
+# выведет команду вида: yc iam key create --service-account-id ajeXXXX --output sa-key.json
+
+# создать ключ
+$(terraform output -raw ci_pusher_create_key_command)
+```
+
+В корне репо на GitHub (Settings → Secrets and variables → Actions → New repository secret)
+добавь 4 секрета:
+
+| Имя секрета         | Что внутри                                                                   |
+|---------------------|------------------------------------------------------------------------------|
+| `YC_SA_JSON_KEY`    | Полное содержимое `sa-key.json` (целиком многострочный JSON)                 |
+| `YC_FOLDER_ID`      | `terraform output -raw folder_id` (или `yc config get folder-id`)            |
+| `YC_REGISTRY_ID`    | `terraform output -raw registry_id`                                          |
+| `YC_K8S_CLUSTER_ID` | `terraform output -raw cluster_id`                                           |
+
+После того как ключ окажется в GitHub Secret, **удалить** локальный файл:
+
+```bash
+shred -u sa-key.json
+```
+
+### Как проверить
+
+Любой коммит в `master` запустит весь pipeline. После успешного
+прохождения `deploy-k8s` в кластере появится новый под с новым образом:
+
+```bash
+kubectl -n url-shortener get pods -l app=api -w
+kubectl -n url-shortener describe deployment api | grep Image:
+```
+
 ## Очистка (только если решил снести)
 
 ```bash

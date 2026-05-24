@@ -37,3 +37,20 @@ resource "yandex_resourcemanager_folder_iam_member" "node_image_puller" {
   role      = "container-registry.images.puller"
   member    = "serviceAccount:${yandex_iam_service_account.nodes.id}"
 }
+
+resource "yandex_iam_service_account" "ci_pusher" {
+  name        = "${var.cluster_name}-ci-pusher"
+  description = "Service account used by GitHub Actions to push images to CR and roll out deployments in K8s."
+}
+
+resource "yandex_resourcemanager_folder_iam_member" "ci_images_pusher" {
+  folder_id = var.folder_id
+  role      = "container-registry.images.pusher"
+  member    = "serviceAccount:${yandex_iam_service_account.ci_pusher.id}"
+}
+
+resource "yandex_resourcemanager_folder_iam_member" "ci_k8s_editor" {
+  folder_id = var.folder_id
+  role      = "k8s.cluster-api.editor"
+  member    = "serviceAccount:${yandex_iam_service_account.ci_pusher.id}"
+}

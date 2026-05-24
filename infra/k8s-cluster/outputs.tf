@@ -27,3 +27,18 @@ output "registry_login_command" {
   description = "Run this to log Docker into the registry for image pushes."
   value       = "yc container registry configure-docker"
 }
+
+output "ci_pusher_sa_id" {
+  description = "Service account used by GitHub Actions for image push & K8s rollout."
+  value       = yandex_iam_service_account.ci_pusher.id
+}
+
+output "ci_pusher_create_key_command" {
+  description = "Create a JSON-key for the CI service account (the file then goes into GitHub secret YC_SA_JSON_KEY)."
+  value       = "yc iam key create --service-account-id ${yandex_iam_service_account.ci_pusher.id} --output sa-key.json"
+}
+
+output "folder_id" {
+  description = "Folder ID where the K8s cluster + registry live (paste into GitHub secret YC_FOLDER_ID)."
+  value       = var.folder_id
+}

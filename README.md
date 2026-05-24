@@ -188,7 +188,17 @@ Container Registry; ноды K8s достают его без отдельног
 
 ## Деплой
 
-Деплой выполняется на VM в Yandex Cloud. На каждый push в `master` GitHub Actions
-гоняет тесты, собирает Docker-образ и через SSH делает `git pull && docker compose up -d --build api`
-на VM. Подробности — в `.github/workflows/ci.yml`, `docker-compose.yml` и Nginx-конфиге
-на VM (`/etc/nginx/sites-enabled/shortener-bot`).
+На каждый push в `master` GitHub Actions гоняет тесты и параллельно делает
+**два деплоя**:
+
+1. **VM (docker-compose)** — `appleboy/ssh-action` подключается к VM по SSH,
+   делает `git pull && docker compose up -d --build api`.
+   Сервис живёт на `https://myshortbot.duckdns.org`.
+2. **Managed Kubernetes** — job `push-image` собирает образ через Buildx,
+   логинится в `cr.yandex` под service account'ом `ci-pusher` и пушит образ с тэгом
+   `<sha7>` + `latest`. Затем job `deploy-k8s` через `yc` получает kubeconfig,
+   делает `kubectl set image deployment/api ...` и `rollout status`.
+   Сервис живёт на `https://myshortbot-k8s.duckdns.org`.
+
+Подробности — в `.github/workflows/ci.yml`, `docker-compose.yml`, `k8s/`
+и Nginx-конфиге на VM (`/etc/nginx/sites-enabled/shortener-bot`).
