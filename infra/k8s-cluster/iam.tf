@@ -54,3 +54,12 @@ resource "yandex_resourcemanager_folder_iam_member" "ci_k8s_editor" {
   role      = "k8s.cluster-api.editor"
   member    = "serviceAccount:${yandex_iam_service_account.ci_pusher.id}"
 }
+
+# Нужно отдельно: k8s.cluster-api.editor даёт права только внутри кластера
+# (через k8s RBAC), а для `yc managed-kubernetes cluster get-credentials`
+# нужен YC API permission managed-kubernetes.clusters.get — он входит в k8s.viewer.
+resource "yandex_resourcemanager_folder_iam_member" "ci_k8s_viewer" {
+  folder_id = var.folder_id
+  role      = "k8s.viewer"
+  member    = "serviceAccount:${yandex_iam_service_account.ci_pusher.id}"
+}
